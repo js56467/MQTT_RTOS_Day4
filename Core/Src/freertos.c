@@ -29,6 +29,7 @@
 #include "LightSensor.h"
 #include "OLED.h"
 #include "DHT11.h"
+#include "LED.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,12 +47,19 @@ static StackType_t  g_pucStackofUARTTask[128];
 static StackType_t g_pucStackofLightSensorTask[128];
 /* 创建温湿度任务栈大小，用于创建静态任务 */
 static StackType_t g_pucStackofDHT11Task[128];
+/* 创建灯管闪烁任务，用于创建静态任务 */
+static StackType_t g_pucStackofLEDTask[128];
+
+
+
 /* 创建串口任务的TCB结构体 用于静态创建任务 */
 static StaticTask_t g_TCBofUARTTask;
 /* 创建串口任务的TCB结构体，用于创建静态任务 */
 static StaticTask_t g_TCBofLightSensorTask;
 /* 创建温湿度传感器任务的TCB结构体,用于创建静态任务 */
 static StaticTask_t g_TCBofDHT11Task;
+/* 创建LED闪烁任务的TCB结构体，用于创建静态任务 */
+static StaticTask_t g_TCBogLEDTask;
 
 /* USER CODE END PD */
 
@@ -70,7 +78,8 @@ static TaskHandle_t UARTTaskHandle;
 static TaskHandle_t LightSensorHandle;
 /* 创建DHT11温湿度传感器任务句柄 */
 static TaskHandle_t DHT11Handle;
-
+/* 创建LED闪烁任务句柄 */
+static TaskHandle_t LEDHandle;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -145,14 +154,16 @@ void MX_FREERTOS_Init(void) {
   
   /* add threads, ... */
   /* 创建串口打印任务 */
-  UARTTaskHandle=xTaskCreateStatic(UART_Task,"PrintTask",128,NULL,osPriorityNormal,g_pucStackofUARTTask,&g_TCBofUARTTask);
+  //UARTTaskHandle=xTaskCreateStatic(UART_Task,"PrintTask",128,NULL,osPriorityNormal,g_pucStackofUARTTask,&g_TCBofUARTTask);
   
   /* 创建光敏传感器任务 */
-  LightSensorHandle=xTaskCreateStatic(LightSensor_Task,"LightSensorTask",128,NULL,osPriorityNormal,g_pucStackofLightSensorTask,&g_TCBofLightSensorTask);
+  //LightSensorHandle=xTaskCreateStatic(LightSensor_Task,"LightSensorTask",128,NULL,osPriorityNormal,g_pucStackofLightSensorTask,&g_TCBofLightSensorTask);
   
   /* 创建温湿度传感任务 */
-  DHT11Handle=xTaskCreateStatic(DHT11_Task,"DHT11Rask",128,NULL,osPriorityNormal,g_pucStackofDHT11Task,&g_TCBofDHT11Task);
+  //DHT11Handle=xTaskCreateStatic(DHT11_Task,"DHT11Task",128,NULL,osPriorityNormal,g_pucStackofDHT11Task,&g_TCBofDHT11Task);
   
+  /* 创建灯光闪烁任务 */
+  //LEDHandle=xTaskCreateStatic(LED_Task,"LEDTask",128,NULL,osPriorityNormal,g_pucStackofLEDTask,&g_TCBogLEDTask);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
