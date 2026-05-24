@@ -30,6 +30,7 @@
 #include "OLED.h"
 #include "DHT11.h"
 #include "LED.h"
+#include "MPU6050.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,8 +48,10 @@ static StackType_t  g_pucStackofUARTTask[128];
 static StackType_t g_pucStackofLightSensorTask[128];
 /* 创建温湿度任务栈大小，用于创建静态任务 */
 static StackType_t g_pucStackofDHT11Task[128];
-/* 创建灯管闪烁任务，用于创建静态任务 */
+/* 创建灯光闪烁任务栈大小，用于创建静态任务 */
 static StackType_t g_pucStackofLEDTask[128];
+/* 创建MPU6050任务栈大小，用于创建静态任务 */
+static StackType_t g_pucStackofMPU6050Task[128];
 
 
 
@@ -59,7 +62,9 @@ static StaticTask_t g_TCBofLightSensorTask;
 /* 创建温湿度传感器任务的TCB结构体,用于创建静态任务 */
 static StaticTask_t g_TCBofDHT11Task;
 /* 创建LED闪烁任务的TCB结构体，用于创建静态任务 */
-static StaticTask_t g_TCBogLEDTask;
+static StaticTask_t g_TCBofLEDTask;
+/* 创建MPU6050任务的TCb结构体，用于创建静态任务 */
+static StaticTask_t g_TCBofMPU6050Task;
 
 /* USER CODE END PD */
 
@@ -114,8 +119,8 @@ void vApplicationIdleHook( void )
    important that vApplicationIdleHook() is permitted to return to its calling
    function, because it is the responsibility of the idle task to clean up
    memory allocated by the kernel to any task that has since been deleted. */
-	vTaskList(pcWriteBuffer);
-	printf("%s\r\n",pcWriteBuffer);
+	//vTaskList(pcWriteBuffer);
+	//printf("%s\r\n",pcWriteBuffer);
 }
 /* USER CODE END 2 */
 
@@ -163,7 +168,13 @@ void MX_FREERTOS_Init(void) {
   //DHT11Handle=xTaskCreateStatic(DHT11_Task,"DHT11Task",128,NULL,osPriorityNormal,g_pucStackofDHT11Task,&g_TCBofDHT11Task);
   
   /* 创建灯光闪烁任务 */
-  //LEDHandle=xTaskCreateStatic(LED_Task,"LEDTask",128,NULL,osPriorityNormal,g_pucStackofLEDTask,&g_TCBogLEDTask);
+  //LEDHandle=xTaskCreateStatic(LED_Task,"LEDTask",128,NULL,osPriorityNormal,g_pucStackofLEDTask,&g_TCBofLEDTask);
+  
+  /* 创建MPU6050检测加速度任务 */
+  xTaskCreateStatic(MPU6050_Task,"MPU6050Task",128,NULL,osPriorityNormal,g_pucStackofMPU6050Task,&g_TCBofMPU6050Task);
+  
+  
+  
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */

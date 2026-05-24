@@ -2,7 +2,9 @@
 #include "i2c.h"
 #include "FreeRTOS.h"
 #include "task.h"
-
+#include "string.h"
+#include "UART_Task.h"
+#include "OLED.h"
 /* 在指定MPU6050地址的指定寄存器地址写入数据Data，该API可以传入一个数组来连续传递两个值而不扰乱时序 只需设置SIZE的值即可 */
 void MPU6050_WriteReg(uint8_t Address,uint8_t Data){
 	uint8_t Adr_Data[2];
@@ -37,8 +39,71 @@ HAL_StatusTypeDef MPU6050_ReadBuffer(uint8_t Address,uint8_t *Buffer,uint8_t Siz
 		return HAL_OK;		
 }
 
+/* 获取MPU6050的ID号,只要在指定位置读一个字节即可 */
 uint8_t MPU6050_GetID(void){
-return MPU6050_ReadByte(MPU6050_WHO_AM_I<<1);
+return MPU6050_ReadByte(MPU6050_WHO_AM_I);
 }
 
+/* 指定位置写一个Buffer */
+void MPU6050_WriteBuffer(uint8_t Address,uint8_t *Buffer,uint8_t Size){
+	uint8_t Data[Size+1],i;
+	Data[0]=Address;
+	for(i=0;i<Size;i++){
+	Data[i+1]=Buffer[i];
+	}
+	memcpy(&Data[1],Buffer,Size);
+HAL_I2C_Master_Transmit(&hi2c2,MPU6050_AD0D_SLAVER_ARRD<<1,Data,Size+1,1000);
+}
+
+/* 初始化MPU6050，通过写寄存器来控制和唤醒寄存器 */
+HAL_StatusTypeDef MPU6050_Init(void){
+	vTaskDelay(100);
+	uint8_t IDNumber=0x68,MPU6050_Flag=0;
+	if(IDNumber==MPU6050_GetID()){
+	printf("MPU6050已经接收到ID号\r\n");
+	MPU6050_Flag=1;
+	}else {
+	printf("未检测到ID号,请检查链接\r\n");
+	return HAL_ERROR;
+	}
+	if(MPU6050_Flag==1){
+	printf("检测到MPU6050ID号%d",IDNumber);
+    MPU6050_WriteReg(MPU6050_RA_PWR_MGMT_1, 0x00);    // 解除休眠
+    MPU6050_WriteReg(MPU6050_RA_SMPLRT_DIV, 0x07);    // 设置采样率为1kHz/(7+1)=125Hz
+    MPU6050_WriteReg(MPU6050_RA_ACCEL_CONFIG, 0x00);  // 加速度计2G模式
+	MPU6050_Flag=0;
+	return HAL_OK;
+	}
+	return HAL_ERROR;
+}
+
+HAL_StatusTypeDef MPU6050_ReadAcc(int16_t *Acc){
+	uint8_t Data[6];
+if(MPU6050_ReadBuffer(MPU6050_ACC_OUT,Data,6)==HAL_OK){
+	/* X方向加速度 */
+	Acc[0]=(int16_t)(Data[1]|(Data[0]<<8));
+	/* Y方向加速度 */
+	Acc[1]=(int16_t)(Data[3]|(Data[2]<<8));
+	/* Z方向加速度 */
+	Acc[2]=(int16_t)(Data[5]|(Data[4]<<8));
+	return HAL_OK;
+  }
+else{
+	OLED_ShowString(4,1,"ReadAcc_Error");
+	return HAL_ERROR;
+	}
+}
+
+void MPU6050_Task(void *Params){
+	int16_t Acc[3];
+if(MPU6050_Init()==HAL_OK){
+while(1){
+  MPU6050_ReadAcc(Acc);
+  OLED_ShowSignedNum(1,1,Acc[0],5);
+  OLED_ShowSignedNum(2,1,Acc[1],5);
+  OLED_ShowSignedNum(3,1,Acc[2],5);
+  vTaskDelay(300);
+  }
+ }
+}
 
