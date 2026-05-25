@@ -171,7 +171,7 @@ void MX_FREERTOS_Init(void) {
   //LEDHandle=xTaskCreateStatic(LED_Task,"LEDTask",128,NULL,osPriorityNormal,g_pucStackofLEDTask,&g_TCBofLEDTask);
   
   /* 创建MPU6050检测加速度任务 */
-  xTaskCreateStatic(MPU6050_Task,"MPU6050Task",128,NULL,osPriorityNormal,g_pucStackofMPU6050Task,&g_TCBofMPU6050Task);
+  //xTaskCreateStatic(MPU6050_Task,"MPU6050Task",128,NULL,osPriorityNormal,g_pucStackofMPU6050Task,&g_TCBofMPU6050Task);
   
   
   
