@@ -99,6 +99,8 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   OLED_Init();
+  	/* ESP8266接收使能 */
+
    //DHT11_GPIO_Config();
   /* USER CODE END 2 */
 

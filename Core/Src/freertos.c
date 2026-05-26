@@ -31,6 +31,7 @@
 #include "DHT11.h"
 #include "LED.h"
 #include "MPU6050.h"
+#include "ESP8266.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,8 +53,8 @@ static StackType_t g_pucStackofDHT11Task[128];
 static StackType_t g_pucStackofLEDTask[128];
 /* 创建MPU6050任务栈大小，用于创建静态任务 */
 static StackType_t g_pucStackofMPU6050Task[128];
-
-
+/* 创建ESP8266的任务栈大小,用于创建任务句柄 */
+static StackType_t g_pucStackofESP8266Task[128];
 
 /* 创建串口任务的TCB结构体 用于静态创建任务 */
 static StaticTask_t g_TCBofUARTTask;
@@ -61,10 +62,13 @@ static StaticTask_t g_TCBofUARTTask;
 static StaticTask_t g_TCBofLightSensorTask;
 /* 创建温湿度传感器任务的TCB结构体,用于创建静态任务 */
 static StaticTask_t g_TCBofDHT11Task;
-/* 创建LED闪烁任务的TCB结构体，用于创建静态任务 */
+/* 创建LED闪烁任务的TCB结构体,用于创建静态任务 */
 static StaticTask_t g_TCBofLEDTask;
-/* 创建MPU6050任务的TCb结构体，用于创建静态任务 */
+/* 创建MPU6050任务的TCB结构体,用于创建静态任务 */
 static StaticTask_t g_TCBofMPU6050Task;
+/* 创建ESP8266任务的TCB结构体,用于创建静态任务 */
+static StaticTask_t g_TACofESP8266Task;
+
 
 /* USER CODE END PD */
 
@@ -85,6 +89,10 @@ static TaskHandle_t LightSensorHandle;
 static TaskHandle_t DHT11Handle;
 /* 创建LED闪烁任务句柄 */
 static TaskHandle_t LEDHandle;
+/* 创建ESP8266句柄 */
+static TaskHandle_t ESP8266Handle;
+
+
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -173,8 +181,8 @@ void MX_FREERTOS_Init(void) {
   /* 创建MPU6050检测加速度任务 */
   //xTaskCreateStatic(MPU6050_Task,"MPU6050Task",128,NULL,osPriorityNormal,g_pucStackofMPU6050Task,&g_TCBofMPU6050Task);
   
-  
-  
+  /* 创建ESP8266任务  */
+  ESP8266Handle=xTaskCreateStatic(ESP8266_Task,"ESP8266Task",128,NULL,osPriorityNormal,g_pucStackofESP8266Task,&g_TACofESP8266Task);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
