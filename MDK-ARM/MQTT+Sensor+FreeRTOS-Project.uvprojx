@@ -336,7 +336,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F103xB</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM3;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;../User;../System;../Board-standard/inc;../Board-standard/src</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM3;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;../User;../System;../Board-standard/inc;../Board-standard/src;../APP</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -1030,6 +1030,11 @@
               <FileType>1</FileType>
               <FilePath>..\User\ESP8266.c</FilePath>
             </File>
+            <File>
+              <FileName>Buzzer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\User\Buzzer.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1059,6 +1064,21 @@
               <FileName>OLED.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Board-standard\src\OLED.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>APP</GroupName>
+          <Files>
+            <File>
+              <FileName>Light_LED_Task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\APP\Light_LED_Task.c</FilePath>
+            </File>
+            <File>
+              <FileName>Attitude_Alarm_Task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\APP\Attitude_Alarm_Task.c</FilePath>
             </File>
           </Files>
         </Group>
