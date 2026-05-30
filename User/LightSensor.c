@@ -11,6 +11,7 @@
 #include "OLED.h"
 #include "Light_LED_Task.h"
 #include "event_groups.h"
+#include "MPU6050.h"
 static uint16_t g_Data[5];
 extern int fputc(int ch,FILE *F);
  extern TaskHandle_t LEDHandle;
@@ -28,8 +29,10 @@ g_xEventGroup_Light_Wake = xEventGroupCreate();
 	/* 开启ADC读取数据和DMA转换，DMA转化完数据立马进中断 */
 		HAL_ADC_Start_DMA(&hadc1,(uint32_t *)g_Data,5); //DMA传满5个数据进入中断，如果用单次扫描只有1个数据，就只有第五次有数据
 		vTaskDelay(100);
+		MPU6050_GetI2cMutex();
 			/* 测试 */
 		OLED_ShowNum(2,1,Aver_Data,4);
+		MPU6050_GiveI2cMutex();
 		if(Aver_Data>3000){
 		xEventGroupSetBits(g_xEventGroup_Light_Wake,1<<0);
 		}else{

@@ -5,6 +5,11 @@
 #include "string.h"
 #include "UART_Task.h"
 #include "OLED.h"
+#include "semphr.h"
+/* 外部信号量句柄 */
+extern  SemaphoreHandle_t AATSemaphoreHandle;
+/* 创建一个互斥量 */
+extern SemaphoreHandle_t MPU6050_I2C_Mutex;
 /* 在指定MPU6050地址的指定寄存器地址写入数据Data，该API可以传入一个数组来连续传递两个值而不扰乱时序 只需设置SIZE的值即可 */
 void MPU6050_WriteReg(uint8_t Address,uint8_t Data){
 	uint8_t Adr_Data[2];
@@ -94,16 +99,37 @@ else{
 	}
 }
 
+/* 为解决mpu6050与oled抢占资源的问题，现在引入一个互斥量 */
+void MPU6050_GiveI2cMutex(void){
+xSemaphoreGive(MPU6050_I2C_Mutex);
+
+}
+	
+/* 获得互斥量 */
+void MPU6050_GetI2cMutex(void){
+xSemaphoreTake(MPU6050_I2C_Mutex,portMAX_DELAY);
+}
+
+
 void MPU6050_Task(void *Params){
 	int16_t Acc[3];
 if(MPU6050_Init()==HAL_OK){
 while(1){
+  MPU6050_GetI2cMutex();
   MPU6050_ReadAcc(Acc);
-  OLED_ShowSignedNum(1,1,Acc[0],5);
-  OLED_ShowSignedNum(2,1,Acc[1],5);
-  OLED_ShowSignedNum(3,1,Acc[2],5);
+  OLED_ShowSignedNum(1,8,Acc[0],5);
+  OLED_ShowSignedNum(2,8,Acc[1],5);
+  OLED_ShowSignedNum(3,8,Acc[2],5);
+  MPU6050_GiveI2cMutex();
   vTaskDelay(300);
+  if(Acc[0]>=10000 || Acc[0]<=-10000 || Acc[1]>=10000 || Acc[1]<=-10000 || Acc[2]<10000){
+	 xSemaphoreGive(AATSemaphoreHandle);
+   }
+   }
   }
  }
-}
+
+
+
+
 

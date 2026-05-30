@@ -420,5 +420,7 @@ uint8_t MPU6050_GetID(void);
 void MPU6050_WriteBuffer(uint8_t Address,uint8_t *Buffer,uint8_t Size);
 HAL_StatusTypeDef MPU6050_Init(void);
 HAL_StatusTypeDef MPU6050_ReadAcc(int16_t *Acc);
+void MPU6050_GiveI2cMutex(void);
+void MPU6050_GetI2cMutex(void);
 void MPU6050_Task(void *Params);
 #endif
