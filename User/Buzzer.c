@@ -28,8 +28,6 @@ void Buzzer_Task(void *params){
 	Buzzer_ON();
 	vTaskDelay(300);
 	Buzzer_OFF();
-	OLED_ShowString(1,1,"      ");
-	OLED_ShowString(2,1,"      ");
 	}
 }
 

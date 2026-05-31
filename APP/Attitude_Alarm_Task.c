@@ -33,9 +33,9 @@ void Attitude_Alarm_Task(void * params){
 	/* 创建一个信号量 */
 	AATSemaphoreHandle=xSemaphoreCreateBinary();
   /* 创建蜂鸣器任务 */
-  BuzzerHandle=xTaskCreateStatic(Buzzer_Task,"BuzzerTask",128,NULL,osPriorityNormal,g_pucStackofBuzzerTask,&g_TCBofBuzzerTask);
+  BuzzerHandle=xTaskCreateStatic(Buzzer_Task,"BuzzerTask",78,NULL,osPriorityNormal,g_pucStackofBuzzerTask,&g_TCBofBuzzerTask);
   /* 创建MPU6050任务 */
-  MPU6050Handle=xTaskCreateStatic(MPU6050_Task,"MPU6050_Task",128,NULL,osPriorityNormal,g_pucStackofMPU6050Task,&g_TCBofMPU6050Task);
+  MPU6050Handle=xTaskCreateStatic(MPU6050_Task,"MPU6050_Task",88,NULL,osPriorityNormal,g_pucStackofMPU6050Task,&g_TCBofMPU6050Task);
   while(1){
   
   }

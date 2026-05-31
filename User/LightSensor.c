@@ -12,11 +12,14 @@
 #include "Light_LED_Task.h"
 #include "event_groups.h"
 #include "MPU6050.h"
+#include "semphr.h"
 static uint16_t g_Data[5];
 extern int fputc(int ch,FILE *F);
  extern TaskHandle_t LEDHandle;
 static uint16_t Aver_Data=0;
 
+/* 外部信号量句柄,表示姿态检测和光照太强都可以触发蜂鸣器任务 */
+extern SemaphoreHandle_t AATSemaphoreHandle;
 /* 创建任务组句柄 */
  EventGroupHandle_t g_xEventGroup_Light_Wake;
  
@@ -32,11 +35,16 @@ g_xEventGroup_Light_Wake = xEventGroupCreate();
 		MPU6050_GetI2cMutex();
 			/* 测试 */
 		OLED_ShowNum(2,1,Aver_Data,4);
+		
 		MPU6050_GiveI2cMutex();
-		if(Aver_Data>3000){
+		if(Aver_Data>2500){
 		xEventGroupSetBits(g_xEventGroup_Light_Wake,1<<0);
-		}else{
+		}else if (Aver_Data>200){
 		xEventGroupSetBits(g_xEventGroup_Light_Wake,1<<2);
+		}else if(Aver_Data<200){
+		//xEventGroupSetBits(g_xEventGroup_Light_Wake,1<<3);
+		/* 蜂鸣器信号量,二者有一个便可响 */
+		xSemaphoreGive(AATSemaphoreHandle);
 		}
 		Aver_Data=0;
 		}

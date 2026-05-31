@@ -45,10 +45,10 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 /* 创建一个检查各个任务占有CPU资源任务所需要的内存 */
-static signed char pcWriteBuffer[200];
+ char pcWriteBuffer[200];
 
 /* 创建AAT任务栈大小,用于静态创建任务 */
-static StackType_t g_pucStackofAAT[128];
+static StackType_t g_pucStackofAAT[256];
 
 /* 创建串口任务栈大小 用于静态创建任务 */
 static StackType_t  g_pucStackofUARTTask[128];
@@ -59,8 +59,11 @@ static StackType_t  g_pucStackofWakeLEDTask[128];
 /* 创建温湿度任务栈大小，用于静态创建任务 */
 static StackType_t g_pucStackofDHT11Task[128];
 
-/* 创建ESP8266的任务栈大小,用于创建任务句柄 */
+/* 创建ESP8266的任务栈大小,用于静态创建任务 */
 static StackType_t g_pucStackofESP8266Task[128];
+
+/* 创建LED闪烁任务栈大小,用于静态创建任务 */
+static StackType_t g_pucStackofToggleLEDTask[128];
 
 /* 创建串口任务的TCB结构体 用于静态创建任务 */
 static StaticTask_t g_TCBofUARTTask;
@@ -74,7 +77,8 @@ static StaticTask_t g_TCBofAATTask;
 /* 创建温湿度传感器任务的TCB结构体,用于创建静态任务 */
 static StaticTask_t g_TCBofDHT11Task;
 
-
+/* 创建LED闪烁TCB结构体,用于静态创建任务 */
+static StaticTask_t g_TCBofToggleLEDTask;
 
 /* 创建ESP8266任务的TCB结构体,用于创建静态任务 */
 static StaticTask_t g_TCBofESP8266Task;
@@ -104,14 +108,18 @@ static TaskHandle_t ESP8266Handle;
 /* 创建补光任务句柄 */
 static TaskHandle_t WakeLEDHandle;
 
+/* 创建姿态报警任务句柄 */
+static TaskHandle_t AATHandle;
 
+/* 创建LED闪烁任务句柄 */
+static TaskHandle_t ToggleLEDHandle;
 
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 128 * 4,
+  .stack_size = 100 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 
@@ -180,20 +188,20 @@ void MX_FREERTOS_Init(void) {
   
   /* add threads, ... */
   /* 创建串口打印任务 */
-  //UARTTaskHandle=xTaskCreateStatic(UART_Task,"PrintTask",128,NULL,osPriorityNormal,g_pucStackofUARTTask,&g_TCBofUARTTask);
+  UARTTaskHandle=xTaskCreateStatic(UART_Task,"PrintTask",128,NULL,osPriorityNormal,g_pucStackofUARTTask,&g_TCBofUARTTask);
   
   /* 创建FreeRtos1:补光任务 */
-  WakeLEDHandle=xTaskCreateStatic(Light_LED_Task,"WakeLEDTask",128,NULL,osPriorityNormal,g_pucStackofWakeLEDTask,&g_TCBofWakeLEDTask);
+  WakeLEDHandle=xTaskCreateStatic(Light_LED_Task,"WakeLEDTask",88,NULL,osPriorityNormal,g_pucStackofWakeLEDTask,&g_TCBofWakeLEDTask);
   
   /* 创建温湿度传感任务 */
-  //DHT11Handle=xTaskCreateStatic(DHT11_Task,"DHT11Task",128,NULL,osPriorityNormal,g_pucStackofDHT11Task,&g_TCBofDHT11Task);
+  DHT11Handle=xTaskCreateStatic(DHT11_Task,"DHT11Task",100,NULL,osPriorityNormal,g_pucStackofDHT11Task,&g_TCBofDHT11Task);
   
 
   /* 创建姿态异常报警任务 */
-  xTaskCreateStatic(Attitude_Alarm_Task,"AATTask",128,NULL,osPriorityNormal,g_pucStackofAAT,&g_TCBofAATTask);
+ AATHandle = xTaskCreateStatic(Attitude_Alarm_Task,"AATTask",256,NULL,osPriorityNormal,g_pucStackofAAT,&g_TCBofAATTask);
 
-  
-  
+  /* 创建两个任务共用蜂鸣器的情况,LED闪烁表示这个情况 */
+  //ToggleLEDHandle=xTaskCreateStatic(ToggleLED,"ToggleLEDTask",128,NULL,osPriorityNormal-1,g_pucStackofToggleLEDTask,&g_TCBofToggleLEDTask);
   
   /* 创建ESP8266任务  */
  // ESP8266Handle=xTaskCreateStatic(ESP8266_Task,"ESP8266Task",128,NULL,osPriorityNormal,g_pucStackofESP8266Task,&g_TCBofESP8266Task);

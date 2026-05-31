@@ -6,10 +6,13 @@
 #include "UART_Task.h"
 #include "OLED.h"
 #include "semphr.h"
+#include "event_groups.h"
 /* 外部信号量句柄 */
 extern  SemaphoreHandle_t AATSemaphoreHandle;
 /* 创建一个互斥量 */
 extern SemaphoreHandle_t MPU6050_I2C_Mutex;
+/* 外部事件组句柄 */
+ extern EventGroupHandle_t g_xEventGroup_Light_Wake;
 /* 在指定MPU6050地址的指定寄存器地址写入数据Data，该API可以传入一个数组来连续传递两个值而不扰乱时序 只需设置SIZE的值即可 */
 void MPU6050_WriteReg(uint8_t Address,uint8_t Data){
 	uint8_t Adr_Data[2];
@@ -65,14 +68,14 @@ HAL_StatusTypeDef MPU6050_Init(void){
 	vTaskDelay(100);
 	uint8_t IDNumber=0x68,MPU6050_Flag=0;
 	if(IDNumber==MPU6050_GetID()){
-	printf("MPU6050已经接收到ID号\r\n");
+	//printf("MPU6050已经接收到ID号\r\n");
 	MPU6050_Flag=1;
 	}else {
-	printf("未检测到ID号,请检查链接\r\n");
+	//printf("未检测到ID号,请检查链接\r\n");
 	return HAL_ERROR;
 	}
 	if(MPU6050_Flag==1){
-	printf("检测到MPU6050ID号%d",IDNumber);
+	//printf("检测到MPU6050ID号%d",IDNumber);
     MPU6050_WriteReg(MPU6050_RA_PWR_MGMT_1, 0x00);    // 解除休眠
     MPU6050_WriteReg(MPU6050_RA_SMPLRT_DIV, 0x07);    // 设置采样率为1kHz/(7+1)=125Hz
     MPU6050_WriteReg(MPU6050_RA_ACCEL_CONFIG, 0x00);  // 加速度计2G模式
@@ -94,7 +97,7 @@ if(MPU6050_ReadBuffer(MPU6050_ACC_OUT,Data,6)==HAL_OK){
 	return HAL_OK;
   }
 else{
-	OLED_ShowString(4,1,"ReadAcc_Error");
+	//OLED_ShowString(4,1,"ReadAcc_Error");
 	return HAL_ERROR;
 	}
 }
@@ -123,10 +126,11 @@ while(1){
   MPU6050_GiveI2cMutex();
   vTaskDelay(300);
   if(Acc[0]>=10000 || Acc[0]<=-10000 || Acc[1]>=10000 || Acc[1]<=-10000 || Acc[2]<10000){
-	 xSemaphoreGive(AATSemaphoreHandle);
+	  xSemaphoreGive(AATSemaphoreHandle);
+	  //xEventGroupSetBits(g_xEventGroup_Light_Wake,1<<4);
+       }
+     }
    }
-   }
-  }
  }
 
 

@@ -4,6 +4,7 @@
 #include "task.h"
 #include "Timer_My.h"
 #include "OLED.h"
+#include "MPU6050.h"
 #define DHT11_DATA_Pin GPIO_PIN_4
 #define DHT11_DATA_GPIO_Port GPIOA
 /* 选择GPIO模式，为DHT11主从机的切换做准备 */
@@ -39,7 +40,7 @@ int8_t DHT11_ReadByte(void){
 uint8_t DHT11_ReadData(int *Hum,int *Tem){
 //	OLED_ShowString(3,1,"Hum:  ");
 //	OLED_ShowString(3,8,"Tem:  ");
-	   /* 初始化DHT11数据引脚 */
+	 /* 初始化DHT11数据引脚 */
 	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_4,GPIO_PIN_SET);
 	struct DHT11Data RData;
 /* 主机发送特定信号 */
@@ -59,8 +60,9 @@ while(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_4)==GPIO_PIN_SET){
 	if(ReTry<100){
 	ReTry++;
 	}else{
-	OLED_ShowString(4,1,"		");
-	OLED_ShowString(4,1,"1ERROR");
+
+//	OLED_ShowString(4,1,"		");
+//	OLED_ShowString(4,1,"1ERROR");
 	return 0;
 	}
 }
@@ -71,8 +73,8 @@ while(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_4)==GPIO_PIN_RESET){
 	if(ReTry<100){
 	ReTry++;
 	}else{
-	OLED_ShowString(4,1,"		");
-	OLED_ShowString(4,1,"2ERROR");
+//	OLED_ShowString(4,1,"		");
+//	OLED_ShowString(4,1,"2ERROR");
 	return 0;
 	}
 	
@@ -84,8 +86,8 @@ while(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_4)==GPIO_PIN_SET){
 	if(ReTry<100){
 	ReTry++;
 	}else{
-	OLED_ShowString(4,1,"		");
-	OLED_ShowString(4,1,"3ERROR");
+//	OLED_ShowString(4,1,"		");
+//	OLED_ShowString(4,1,"3ERROR");
 	return 0;
 	}
 }
@@ -97,35 +99,37 @@ RData.temp_int=DHT11_ReadByte();
 RData.temp_deci=DHT11_ReadByte();
 RData.check_sum=DHT11_ReadByte();
 /* 开始校验 */
-int16_t sum=RData.humi_int+RData.humi_deci+RData.temp_int+RData.temp_deci;
+uint16_t sum=RData.humi_int+RData.humi_deci+RData.temp_int+RData.temp_deci;
 if(RData.check_sum==sum){
-//	//OLED_ShowString(3,1,"Hum:  .  ");
-//	OLED_ShowNum(3,5,(int32_t)RData.humi_int,2);
-//	//OLED_ShowSignedNum(3,8,(int32_t)RData.humi_deci,2);
-//	//OLED_ShowString(3,1,"Tem:  .  ");
-//	OLED_ShowNum(3,12,(int32_t)RData.temp_int,2);
-//	//OLED_ShowSignedNum(3,13,(int32_t)RData.temp_deci,2);
-//	OLED_ShowString(4,8,"        ");	
-//	OLED_ShowString(4,1,"Succss");
 	/* 解引用指针 改传入参数的地址里面的数据 */
 	*Hum=RData.humi_int;
 	*Tem=RData.temp_int;
-	OLED_ShowString(4,1,"        ");
   return 1;
   }else{
-	OLED_ShowString(4,8,"Suc B F");
+	  MPU6050_GetI2cMutex();
+	  /* 表示传入了数据但和校验位不对 */
+	OLED_ShowString(1,1,"SBF");
+	  MPU6050_GiveI2cMutex();
 	return 0;
   }
 } 
 
 void DHT11_Task(void *Params){
 int Hum=0,Tem=0;
-	while(1){
-	DHT11_ReadData(&Hum,&Tem);
 	OLED_ShowString(3,1,"Hum:  ");
-	OLED_ShowString(3,8,"Tem:  ");
+	OLED_ShowString(4,1,"Tem:  ");
+	while(1){
+	/* 关闭调度器,对于DHT11对时序要求精度高的硬件,防止时序进行时被打断,此时关闭调度器打断TICK中断 */
+	taskENTER_CRITICAL();
+	DHT11_ReadData(&Hum,&Tem);
+	/* 打开调度器,注意！在开关调度器保护的资源里面,比如这里的ReadData中不可调用任务阻塞式API!!! */
+	taskEXIT_CRITICAL();
+	/* 获得互斥量,防止多任务抢占i2c资源 */
+    MPU6050_GetI2cMutex();
 	OLED_ShowNum(3,5,(uint32_t)Hum,2);
-	OLED_ShowNum(3,12,(uint32_t)Tem,2);
+	OLED_ShowNum(4,5,(uint32_t)Tem,2);
+	/* 给出互斥量 */
+	MPU6050_GiveI2cMutex();
 	vTaskDelay(100);
 	}
-}
+  }

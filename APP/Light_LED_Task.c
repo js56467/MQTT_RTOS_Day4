@@ -24,10 +24,10 @@ EventGroupHandle_t xEventGroupCreate( void );
 void Light_LED_Task(void *params){
 	
 /* 创建光敏传感器任务 */
-  LightSensorHandle=xTaskCreateStatic(LightSensor_Task,"LightSensorTask",128,NULL,osPriorityNormal,g_pucStackofLightSensorTask,&g_TCBofLightSensorTask);
+  LightSensorHandle=xTaskCreateStatic(LightSensor_Task,"LightSensorTask",100,NULL,osPriorityNormal,g_pucStackofLightSensorTask,&g_TCBofLightSensorTask);
   
 /* 创建灯光闪烁任务 */
-  LEDHandle=xTaskCreateStatic(LED_Task,"LEDTask",128,NULL,osPriorityNormal,g_pucStackofLEDTask,&g_TCBofLEDTask);
+  LEDHandle=xTaskCreateStatic(LED_Task,"LEDTask",50,NULL,osPriorityNormal,g_pucStackofLEDTask,&g_TCBofLEDTask);
 	while(1){
 		
 	}
