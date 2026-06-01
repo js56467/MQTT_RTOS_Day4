@@ -188,23 +188,23 @@ void MX_FREERTOS_Init(void) {
   
   /* add threads, ... */
   /* 创建串口打印任务 */
-  UARTTaskHandle=xTaskCreateStatic(UART_Task,"PrintTask",128,NULL,osPriorityNormal,g_pucStackofUARTTask,&g_TCBofUARTTask);
+  //UARTTaskHandle=xTaskCreateStatic(UART_Task,"PrintTask",128,NULL,osPriorityNormal,g_pucStackofUARTTask,&g_TCBofUARTTask);
   
   /* 创建FreeRtos1:补光任务 */
-  WakeLEDHandle=xTaskCreateStatic(Light_LED_Task,"WakeLEDTask",88,NULL,osPriorityNormal,g_pucStackofWakeLEDTask,&g_TCBofWakeLEDTask);
+  //WakeLEDHandle=xTaskCreateStatic(Light_LED_Task,"WakeLEDTask",88,NULL,osPriorityNormal,g_pucStackofWakeLEDTask,&g_TCBofWakeLEDTask);
   
   /* 创建温湿度传感任务 */
-  DHT11Handle=xTaskCreateStatic(DHT11_Task,"DHT11Task",100,NULL,osPriorityNormal,g_pucStackofDHT11Task,&g_TCBofDHT11Task);
+  //DHT11Handle=xTaskCreateStatic(DHT11_Task,"DHT11Task",100,NULL,osPriorityNormal,g_pucStackofDHT11Task,&g_TCBofDHT11Task);
   
 
   /* 创建姿态异常报警任务 */
- AATHandle = xTaskCreateStatic(Attitude_Alarm_Task,"AATTask",256,NULL,osPriorityNormal,g_pucStackofAAT,&g_TCBofAATTask);
+ //AATHandle = xTaskCreateStatic(Attitude_Alarm_Task,"AATTask",256,NULL,osPriorityNormal,g_pucStackofAAT,&g_TCBofAATTask);
 
   /* 创建两个任务共用蜂鸣器的情况,LED闪烁表示这个情况 */
-  //ToggleLEDHandle=xTaskCreateStatic(ToggleLED,"ToggleLEDTask",128,NULL,osPriorityNormal-1,g_pucStackofToggleLEDTask,&g_TCBofToggleLEDTask);
+  //ToggleLEDHandle=xTaskCreateStatic(ToggleLED,"ToggleLEDTask",128,NULL,osPriorityNormal,g_pucStackofToggleLEDTask,&g_TCBofToggleLEDTask);
   
   /* 创建ESP8266任务  */
- // ESP8266Handle=xTaskCreateStatic(ESP8266_Task,"ESP8266Task",128,NULL,osPriorityNormal,g_pucStackofESP8266Task,&g_TCBofESP8266Task);
+  ESP8266Handle=xTaskCreateStatic(ESP8266_Task,"ESP8266Task",128,NULL,osPriorityNormal,g_pucStackofESP8266Task,&g_TCBofESP8266Task);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */

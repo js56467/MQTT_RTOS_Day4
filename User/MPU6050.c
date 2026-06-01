@@ -127,7 +127,7 @@ while(1){
   vTaskDelay(300);
   if(Acc[0]>=10000 || Acc[0]<=-10000 || Acc[1]>=10000 || Acc[1]<=-10000 || Acc[2]<10000){
 	  xSemaphoreGive(AATSemaphoreHandle);
-	  //xEventGroupSetBits(g_xEventGroup_Light_Wake,1<<4);
+	  xEventGroupSetBits(g_xEventGroup_Light_Wake,1<<4);
        }
      }
    }

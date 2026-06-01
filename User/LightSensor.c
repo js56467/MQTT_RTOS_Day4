@@ -42,7 +42,7 @@ g_xEventGroup_Light_Wake = xEventGroupCreate();
 		}else if (Aver_Data>200){
 		xEventGroupSetBits(g_xEventGroup_Light_Wake,1<<2);
 		}else if(Aver_Data<200){
-		//xEventGroupSetBits(g_xEventGroup_Light_Wake,1<<3);
+		xEventGroupSetBits(g_xEventGroup_Light_Wake,1<<3);
 		/* 蜂鸣器信号量,二者有一个便可响 */
 		xSemaphoreGive(AATSemaphoreHandle);
 		}

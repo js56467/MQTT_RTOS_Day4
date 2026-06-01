@@ -27,7 +27,7 @@ void LED_Task(void *Params){
 }
 void ToggleLED(void * params){	
 while(1){
-  xEventGroupWaitBits(g_xEventGroup_Light_Wake,(1<<3) | (1<<4) ,pdFALSE,pdTRUE,portMAX_DELAY);
+  //xEventGroupWaitBits(g_xEventGroup_Light_Wake, 1<<4 ,pdFALSE,pdTRUE,portMAX_DELAY);
   vTaskDelay(350);
   HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_1);
  
