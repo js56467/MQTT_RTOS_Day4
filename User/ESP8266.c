@@ -9,9 +9,16 @@
 
 #define WIFI_SSID   "iQOO12"
 #define WIFI_PWD    "258258258"
-#define TCP_SERVER_IP "172.25.246.114"
-#define TCP_SERVER_PORT "8000"
-
+#define TCP_SERVER_IP "mqtts.heclouds.com"
+#define TCP_SERVER_PORT "1883"
+#define Device_Name    "D1"
+#define Device_ID      "0BQEYg770u"
+#define Token          "version=2018-10-31&res=products%2F0BQEYg770u%2Fdevices%2FD1&et=1812008750&method=md5&sign=%2Fn95KGYJ%2Fek9%2BV3MD5VYRQ%3D%3D"
+//#define OneNET_Internet_Address   "mqtts.heclouds.com"
+/* ? */
+#define Number_Message    "123"
+#define Tem  				25
+#define RECEIVE_ID          "222"
 /* 定义全局缓存区,用来保存接收到的数据 */
 static uint8_t g_uart_Rx_Buf[256];
 /* 定义计数值,用来计收到了多少个数据 */
@@ -85,7 +92,22 @@ HAL_StatusTypeDef ESP8266_Send_Command(char *Command,char * Ret){
   }
 return HAL_ERROR;
 }
-
+/* 因为getip发完命令还要用缓冲区,所以我单独把clean移到外面 */
+HAL_StatusTypeDef ESP8266_Send_Command_Get_IP(char *Command,char * Ret){
+	uint8_t Time_Out=250;
+	HAL_UART_Transmit(&huart2,(uint8_t *)Command,strlen(Command),300);
+	vTaskDelay(10);
+    while(Time_Out--){
+	if(ESP8266_Wait_Receive()==HAL_OK){
+		if(strstr((const char *)g_uart_Rx_Buf,Ret)!=NULL){
+		/* 清除上一个数据帧 */
+		return HAL_OK;
+		}
+	}
+	vTaskDelay(10);
+  }
+return HAL_ERROR;
+}
 
 
 
@@ -117,7 +139,7 @@ HAL_StatusTypeDef ESP8266_Set_Mode(uint8_t Mode){
 
 /* 关闭回显模式 */
 HAL_StatusTypeDef ESP8266_ATE0_Config(void){
-return ESP8266_Send_Command("AT+ATE0\r\n","OK");
+return ESP8266_Send_Command("ATE0\r\n","OK");
 }
 
 
@@ -143,6 +165,7 @@ void ESP8266_Task(void *Params){
 //	ESP8266_Clean();
      }
 }
+
 /* 单路链接 */
 HAL_StatusTypeDef ESP8266_Single_Connection(void){
 	ESP8266_Send_Command("AT+CIPMUX=0\r\n","OK");
@@ -161,22 +184,25 @@ HAL_StatusTypeDef ESP8266_Join_AP(char * SSID,char * PWD){
 HAL_StatusTypeDef ESP8266_Get_IP(char * Buf){
 	char *Sta;
 	char *End;
-if(ESP8266_Send_Command("AT+CIFSR\r\n","STAIP")==HAL_OK){
+if(ESP8266_Send_Command_Get_IP("AT+CIFSR\r\n","STAIP")==HAL_OK){
 	Sta=strstr((char *)g_uart_Rx_Buf,"\"");
 	End=strstr(Sta+1,"\"");
 	*End='\0';
 	sprintf(Buf,"%s",Sta+1);
+	ESP8266_Clean();
 	return HAL_OK;
   }else{
   return HAL_ERROR;
   }
 }
+
 /* 连接TCP服务器 */
 HAL_StatusTypeDef ESP8266_Connect_TCP_Server(char *Server_IP,char *Server_Port){
 	char cmd[64];
 	sprintf(cmd,"AT+CIPSTART=\"TCP\",\"%s\",%s\r\n",Server_IP,Server_Port);
-	return ESP8266_Send_Command(cmd,"CONNECT");
+	 return ESP8266_Send_Command(cmd,"CO");
 }
+
 /* 断开TCP服务器 */
 HAL_StatusTypeDef ESP8266_Disconnect_TCP_Server(void){
 return ESP8266_Send_Command("AT+CIPCLOSE\r\n"," ");
@@ -200,6 +226,48 @@ return ESP8266_Send_Command("+++","");
 }
 
 
+/* OneNET服务器上的设备授权 */
+HAL_StatusTypeDef ESP8266_Link_Device_Status(char *device_name,char *device_iD,char *token){
+	char   cmd[128];
+	sprintf(cmd,"AT+MQTTUSERCFG=0,1,\"%s\",\"%s\",\"%s\",0,0,\"\"\r\n",device_name,device_iD,token);
+    return ESP8266_Send_Command(cmd,"OK");
+}
+
+/* TCP+MQTT握手,正式连上OneNET云平台,OneNET设备从离线变为在线 */
+HAL_StatusTypeDef ESP8266_TCP_MQTT_Link(char *internet_Address,char * mqtt_Port){
+    char cmd[128];
+	sprintf(cmd,"AT+MQTTCONN=0,\"%s\",%s,1\r\n",internet_Address,mqtt_Port);
+	return ESP8266_Send_Command(cmd,"OK");
+}
+
+/* 订阅属性上报回复主题,能收到平台确认消息 */
+HAL_StatusTypeDef ESP8266_Subscribe(char * device_id,char * device_name){
+    char cmd[128];
+	sprintf(cmd,"AT+MQTTSUB=0,\"$sys/%s/%s/thing/property/post/reply\",0",device_id,device_name);
+	return ESP8266_Send_Command(cmd,"OK");
+}
+
+/* 设备上报属性数据,上传数据到OneNET云 */
+HAL_StatusTypeDef ESP8266_Send_Data_OneNET(char * device_id,char * device_name,char *number_message,uint8_t tem){
+   char cmd[128];
+	sprintf(cmd,"AT+MQTTPUB=0,\"$sys/%s/%s/thing/property/post\",\"{\"id\":\"%s\",\"params\":%d}\"",device_id,device_name,Number_Message,Tem);
+	return ESP8266_Send_Command(cmd,"OK");
+}
+
+/* 订阅平台下发控制指令主题,订阅这条指令后串口自动下发控制指令主题 */
+HAL_StatusTypeDef ESP8266_OneNet_Command(char * device_id,char * device_name){
+	char cmd[128];
+	sprintf(cmd,"AT+MQTTSUB=0,\"$sys/%s/%s/thing/property/set\",0",device_id,device_name);
+	return ESP8266_Send_Command(cmd,"OK");
+}
+
+/* 收到云端指令后,回复应答给平台 */
+HAL_StatusTypeDef ESP8266_MQTT_ACK(char * device_id,char * device_name,char * receive_id){
+    char cmd[128];
+	sprintf("AT+MQTTPUB=0,\"$sys/%s/%s/thing/property/set_reply\",{\"id\":\"%s\"}",device_id,device_name,receive_id);
+	return ESP8266_Send_Command(cmd,"OK");
+}
+
 /**
  * @brief       ESP8266初始化
  * @param       baudrate: ESP8266 UART通讯波特率
@@ -211,16 +279,18 @@ HAL_StatusTypeDef ESP8266_init(void)
     char ip_buf[16];
     /* 让WIFI退出透传模式 */
 	while(ESP8266_Out_Transparent())
-        vTaskDelay(500);
-
+        vTaskDelay(500); 
+	
+	printf("0.RESTORE\r\n");
+	while(ESP8266_Restore())
+	    vTaskDelay(500);
+	
 	printf("1.AT\r\n");
 	while(ESP8266_AT_Test())
         vTaskDelay(500);
 	
 	printf("2.RST\r\n");
     while(ESP8266_SW_Reset())
-        vTaskDelay(500);
-	while(ESP8266_Disconnect_TCP_Server())
         vTaskDelay(500);
 	
 	printf("3.CWMODE\r\n");
@@ -233,16 +303,17 @@ HAL_StatusTypeDef ESP8266_init(void)
 	
 	printf("5.CWJAP\r\n");      //连接WIFI
 	while(ESP8266_Join_AP(WIFI_SSID, WIFI_PWD))
-        vTaskDelay(1000);
+        vTaskDelay(500);
     
     printf("6.CIFSR\r\n");
     while(ESP8266_Get_IP(ip_buf))
-        vTaskDelay(500);
+       vTaskDelay(500);
 
     printf("ESP8266 IP: %s\r\n", ip_buf);
+	
 	printf("7.CIPSTART\r\n");
     while(ESP8266_Connect_TCP_Server(TCP_SERVER_IP, TCP_SERVER_PORT))
-        vTaskDelay(500);
+       vTaskDelay(500);
     
     printf("8.CIPMODE\r\n");
     while(ESP8266_Out_Transparent())
@@ -252,5 +323,33 @@ HAL_StatusTypeDef ESP8266_init(void)
     return HAL_OK;
 }
 
-    
-//void ESP8266_STA_Mode_Init
+HAL_StatusTypeDef ESP8266_MQTT_Give_Data(void){
+
+	printf("1.MQTTStatus\r\n");
+	while(ESP8266_Link_Device_Status(Device_Name,Device_ID,Token));
+	vTaskDelay(500);
+	
+	printf("2.MQTTConnct\r\n");
+	while(ESP8266_TCP_MQTT_Link(TCP_SERVER_IP, TCP_SERVER_PORT));
+	vTaskDelay(500);
+	
+	printf("3.Sub_Up\r\n");
+	while(ESP8266_Subscribe(Device_ID,Device_Name));
+	vTaskDelay(500);
+	
+	printf("4.MQTT_Data_UP\r\n");
+	while(ESP8266_Send_Data_OneNET(Device_ID,Device_Name,Number_Message,Tem));
+	vTaskDelay(500);
+	
+	printf("5.Sub_Dowm\r\n");
+	while(ESP8266_OneNet_Command(Device_ID,Device_Name));
+	vTaskDelay(500);
+	
+	printf("6.ESP8066_ACK\r\n");
+	while(ESP8266_MQTT_ACK(Device_ID,Device_Name,RECEIVE_ID));
+	vTaskDelay(500);
+	
+	printf(" MQTT SendData  OK\r\n");
+	return HAL_OK;
+}
+
