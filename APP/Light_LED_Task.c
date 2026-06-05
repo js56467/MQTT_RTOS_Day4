@@ -18,9 +18,6 @@ static StaticTask_t g_TCBofLEDTask;
 /* 创建光敏任务的TCB结构体，用于创建静态任务 */
 static StaticTask_t g_TCBofLightSensorTask;
 
-/* 创建事件组 */
-EventGroupHandle_t xEventGroupCreate( void );
-
 void Light_LED_Task(void *params){
 	
 /* 创建光敏传感器任务 */

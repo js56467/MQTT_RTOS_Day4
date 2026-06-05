@@ -6,6 +6,8 @@
 #include "UART_Task.h"
 #include "string.h"
 #include "Timer_My.h"
+#include "queue.h"
+#include "DHT11.h"
 
 #define WIFI_SSID   "iQOO12"
 #define WIFI_PWD    "258258258"
@@ -14,11 +16,16 @@
 #define Device_Name    "D1"
 #define Device_ID      "0BQEYg770u"
 #define Token          "version=2018-10-31&res=products%2F0BQEYg770u%2Fdevices%2FD1&et=1812008750&method=md5&sign=%2Fn95KGYJ%2Fek9%2BV3MD5VYRQ%3D%3D"
+#define My_ID           "5" 
+#define Params_Tem     "temp"
+#define Params_Humi     "humi"
+
 //#define OneNET_Internet_Address   "mqtts.heclouds.com"
 /* ? */
 #define Number_Message    "123"
 #define Tem  				25
 #define RECEIVE_ID          "222"
+
 /* 定义全局缓存区,用来保存接收到的数据 */
 static uint8_t g_uart_Rx_Buf[256];
 /* 定义计数值,用来计收到了多少个数据 */
@@ -28,6 +35,11 @@ static uint8_t ESP8266_PreCnt=0;
 /* 收到的数据存放到这个变量里面 */
 static uint8_t Data;
 
+//extern int	g_DHT11_Tem,g_DHT11_Hum;
+/* 队列句柄,用来读队列,当写队列时,同步数据到OneNET上 */
+extern QueueHandle_t g_QueueMQTT;
+
+extern struct DHT11SendData SData;
 /* 回调函数,接收到数据触发中断 */
  void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)	 
 {
@@ -149,20 +161,9 @@ void ESP8266_Task(void *Params){
 	HAL_UART_Receive_IT(&huart2,&Data,1);
 	ESP8266_init();
 	while(1){
-////	if((ESP8266_Send_Command("AT\r\n","OK"))==HAL_OK){
-////	vTaskDelay(500);
-////	printf("AT_Tesk_OK\r\n");
-////	}
-////	else{
-////	printf("AT_Tesk_Fail\r\n");
-//	if((ESP8266_Set_Mode(1)==HAL_OK)){
-//	vTaskDelay(500);
-//	printf("AT_Tesk_OK\r\n");
-//	}
-//	else{
-//	printf("AT_Tesk_Fail\r\n");
-//	   }
-//	ESP8266_Clean();
+		/* 等待烧录器到了我再看看传入数据的流程是怎样的,此处已经将温湿度的值传入到这个结构体Buffer中了 */
+		xQueueReceive(g_QueueMQTT,&SData,portMAX_DELAY );
+		ESP8266_MQTT_Give_Data();
      }
 }
 
@@ -247,12 +248,20 @@ HAL_StatusTypeDef ESP8266_Subscribe(char * device_id,char * device_name){
 	return ESP8266_Send_Command(cmd,"OK");
 }
 
-/* 设备上报属性数据,上传数据到OneNET云 */
-HAL_StatusTypeDef ESP8266_Send_Data_OneNET(char * device_id,char * device_name,char *number_message,uint8_t tem){
+/* 设备上报属性数据,上传数据到OneNET云,第一步进入透传模式 */
+HAL_StatusTypeDef ESP8266_Send_Data_OneNET_CIP(char * device_id,char * device_name,char *number_message,uint8_t tem){
    char cmd[128];
-	sprintf(cmd,"AT+MQTTPUB=0,\"$sys/%s/%s/thing/property/post\",\"{\"id\":\"%s\",\"params\":%d}\"",device_id,device_name,Number_Message,Tem);
+	sprintf(cmd,"AT+MQTTPUBRAW=0,\"$sys/%s/%s/thing/property/post\",%s,0,0",device_id,device_name,Number_Message);
 	return ESP8266_Send_Command(cmd,"OK");
 }
+
+/* 上报指定数据,上报完退出透传模式 */
+HAL_StatusTypeDef ESP8266_Send_Data(char * my_id,char *params_tem,int tem_data,char *params_humi,int hum_data){
+    char cmd[128];
+	sprintf(cmd,"{\"id\":\"%s\",\"params\":{\"%s\":{\"value\":%d},\"%s\":{\"value\":%d}}}",my_id,params_tem,tem_data,params_humi,hum_data);
+	return ESP8266_Send_Command(cmd,"OK");
+}
+
 
 /* 订阅平台下发控制指令主题,订阅这条指令后串口自动下发控制指令主题 */
 HAL_StatusTypeDef ESP8266_OneNet_Command(char * device_id,char * device_name){
@@ -264,7 +273,7 @@ HAL_StatusTypeDef ESP8266_OneNet_Command(char * device_id,char * device_name){
 /* 收到云端指令后,回复应答给平台 */
 HAL_StatusTypeDef ESP8266_MQTT_ACK(char * device_id,char * device_name,char * receive_id){
     char cmd[128];
-	sprintf("AT+MQTTPUB=0,\"$sys/%s/%s/thing/property/set_reply\",{\"id\":\"%s\"}",device_id,device_name,receive_id);
+	sprintf("AT+MQTTPUB=0,\"$sys/%s/%s/thing/property/set_reply\"",device_id,device_name,receive_id);
 	return ESP8266_Send_Command(cmd,"OK");
 }
 
@@ -281,41 +290,41 @@ HAL_StatusTypeDef ESP8266_init(void)
 	while(ESP8266_Out_Transparent())
         vTaskDelay(500); 
 	
-	printf("0.RESTORE\r\n");
+	printf("1.RESTORE\r\n");
 	while(ESP8266_Restore())
 	    vTaskDelay(500);
 	
-	printf("1.AT\r\n");
+	printf("2.AT\r\n");
 	while(ESP8266_AT_Test())
         vTaskDelay(500);
 	
-	printf("2.RST\r\n");
+	printf("3.RST\r\n");
     while(ESP8266_SW_Reset())
         vTaskDelay(500);
 	
-	printf("3.CWMODE\r\n");
+	printf("4.CWMODE\r\n");
 	while(ESP8266_Set_Mode(ESP8266_STA_MODE))
         vTaskDelay(500);
 	
-	printf("4.AT+CIPMUX\r\n");  //设置单路连接模式，透传只能使用此模式
+	printf("5.AT+CIPMUX\r\n");  //设置单路连接模式，透传只能使用此模式
 	while(ESP8266_Single_Connection())
         vTaskDelay(500);
 	
-	printf("5.CWJAP\r\n");      //连接WIFI
+	printf("6.CWJAP\r\n");      //连接WIFI
 	while(ESP8266_Join_AP(WIFI_SSID, WIFI_PWD))
         vTaskDelay(500);
     
-    printf("6.CIFSR\r\n");
+    printf("7.CIFSR\r\n");
     while(ESP8266_Get_IP(ip_buf))
        vTaskDelay(500);
 
     printf("ESP8266 IP: %s\r\n", ip_buf);
 	
-	printf("7.CIPSTART\r\n");
+	printf("8.CIPSTART\r\n");
     while(ESP8266_Connect_TCP_Server(TCP_SERVER_IP, TCP_SERVER_PORT))
        vTaskDelay(500);
     
-    printf("8.CIPMODE\r\n");
+    printf("9.CIPMODE\r\n");
     while(ESP8266_Out_Transparent())
         vTaskDelay(500);
     
@@ -337,15 +346,19 @@ HAL_StatusTypeDef ESP8266_MQTT_Give_Data(void){
 	while(ESP8266_Subscribe(Device_ID,Device_Name));
 	vTaskDelay(500);
 	
-	printf("4.MQTT_Data_UP\r\n");
-	while(ESP8266_Send_Data_OneNET(Device_ID,Device_Name,Number_Message,Tem));
+	printf("4.MQTT_Data_UP_CIP\r\n");
+	while(ESP8266_Send_Data_OneNET_CIP(Device_ID,Device_Name,Number_Message,Tem));
+	vTaskDelay(500);
+	
+	printf("5.MQTT_Data_UP\r\n");
+	while(ESP8266_Send_Data(My_ID,Params_Tem,SData.dht11_Hum,Params_Humi,SData.dht11_Tem));
 	vTaskDelay(500);
 	
 	printf("5.Sub_Dowm\r\n");
 	while(ESP8266_OneNet_Command(Device_ID,Device_Name));
 	vTaskDelay(500);
 	
-	printf("6.ESP8066_ACK\r\n");
+	printf("6.ESP8266_ACK\r\n");
 	while(ESP8266_MQTT_ACK(Device_ID,Device_Name,RECEIVE_ID));
 	vTaskDelay(500);
 	

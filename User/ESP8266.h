@@ -30,8 +30,8 @@ HAL_StatusTypeDef ESP8266_init(void);
 HAL_StatusTypeDef ESP8266_Link_Device_Status(char *device_name,char *device_iD,char *token);
 HAL_StatusTypeDef ESP8266_TCP_MQTT_Link(char *internet_Address,char * mqtt_Port);
 HAL_StatusTypeDef ESP8266_Subscribe(char * device_id,char * device_name);
-HAL_StatusTypeDef ESP8266_Send_Data_OneNET(char * device_id,char * device_name,char *Number_Message,uint8_t Tem);
-HAL_StatusTypeDef ESP8266_OneNet_Command(char * device_id,char * device_name);
+HAL_StatusTypeDef ESP8266_Send_Data_OneNET_CIP(char * device_id,char * device_name,char *Number_Message,uint8_t Tem);
+HAL_StatusTypeDef ESP8266_Send_Data(char * my_id,char *params_tem,int tem_data,char *params_humi,int hum_data);
 HAL_StatusTypeDef ESP8266_MQTT_ACK(char * device_id,char * device_name,char * receive_id);
 HAL_StatusTypeDef ESP8266_MQTT_Give_Data(void);
 #endif

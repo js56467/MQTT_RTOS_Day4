@@ -22,7 +22,7 @@ static uint16_t Aver_Data=0;
 extern SemaphoreHandle_t AATSemaphoreHandle;
 /* 创建任务组句柄 */
  EventGroupHandle_t g_xEventGroup_Light_Wake;
- 
+  StaticEventGroup_t  pxEventGroupBuffer[10];
 void LightSensor_Task(void* params){
 /* 开启ADC校验 */
 HAL_ADCEx_Calibration_Start(&hadc1);

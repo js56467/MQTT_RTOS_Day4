@@ -5,8 +5,20 @@
 #include "Timer_My.h"
 #include "OLED.h"
 #include "MPU6050.h"
+#include "queue.h"
+#define xQueueLenMQTT 10
 #define DHT11_DATA_Pin GPIO_PIN_4
 #define DHT11_DATA_GPIO_Port GPIOA
+/* 创建任务句柄,此处用队列是代替用全局变量来"跳跃"不同函数的情况 */
+QueueHandle_t g_QueueMQTT;
+struct DHT11Data RData;
+struct DHT11SendData SData;
+/* 创建一个Buffer,用于静态创建队列 */
+static uint8_t g_pucQueueStorageBufferMQTT[xQueueLenMQTT*sizeof(&SData)];
+/* 创建一个结构体,用于静态创建队列,保存数据 */
+static StaticQueue_t g_pxQueueBufferMQTT;
+
+int g_DHT11_Tem=0,g_DHT11_Hum=0;
 /* 选择GPIO模式，为DHT11主从机的切换做准备 */
 void SelectGPIOMode_DHT11(uint16_t GPIO_Mode , uint16_t GPIO_Pull){
   GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -37,12 +49,12 @@ int8_t DHT11_ReadByte(void){
 }
 
 /* 完整流程 */
-uint8_t DHT11_ReadData(int *Hum,int *Tem){
-//	OLED_ShowString(3,1,"Hum:  ");
-//	OLED_ShowString(3,8,"Tem:  ");
+uint8_t DHT11_ReadData(void){
+	/* 静态创建队列 */
+	g_QueueMQTT=xQueueCreateStatic(xQueueLenMQTT,sizeof(&SData),g_pucQueueStorageBufferMQTT,&g_pxQueueBufferMQTT);
 	 /* 初始化DHT11数据引脚 */
 	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_4,GPIO_PIN_SET);
-	struct DHT11Data RData;
+	
 /* 主机发送特定信号 */
 SelectGPIOMode_DHT11(GPIO_MODE_OUTPUT_PP,GPIO_NOPULL);
 HAL_GPIO_WritePin(GPIOA,GPIO_PIN_4,GPIO_PIN_RESET);
@@ -101,9 +113,12 @@ RData.check_sum=DHT11_ReadByte();
 /* 开始校验 */
 uint16_t sum=RData.humi_int+RData.humi_deci+RData.temp_int+RData.temp_deci;
 if(RData.check_sum==sum){
+	
 	/* 解引用指针 改传入参数的地址里面的数据 */
-	*Hum=RData.humi_int;
-	*Tem=RData.temp_int;
+	//*hum=RData.humi_int;
+	//*tem=RData.temp_int;
+	SData.dht11_Hum=RData.humi_int;
+	SData.dht11_Tem=RData.temp_int;
   return 1;
   }else{
 	  MPU6050_GetI2cMutex();
@@ -115,21 +130,23 @@ if(RData.check_sum==sum){
 } 
 
 void DHT11_Task(void *Params){
-int Hum=0,Tem=0;
+
 	OLED_ShowString(3,1,"Hum:  ");
 	OLED_ShowString(4,1,"Tem:  ");
 	while(1){
 	/* 关闭调度器,对于DHT11对时序要求精度高的硬件,防止时序进行时被打断,此时关闭调度器打断TICK中断 */
 	taskENTER_CRITICAL();
-	DHT11_ReadData(&Hum,&Tem);
+	DHT11_ReadData();
 	/* 打开调度器,注意！在开关调度器保护的资源里面,比如这里的ReadData中不可调用任务阻塞式API!!! */
 	taskEXIT_CRITICAL();
 	/* 获得互斥量,防止多任务抢占i2c资源 */
     MPU6050_GetI2cMutex();
-	OLED_ShowNum(3,5,(uint32_t)Hum,2);
-	OLED_ShowNum(4,5,(uint32_t)Tem,2);
+	OLED_ShowNum(3,5,SData.dht11_Hum,2);
+	OLED_ShowNum(4,5,SData.dht11_Tem,2);
 	/* 给出互斥量 */
 	MPU6050_GiveI2cMutex();
+	/* 将得到的数据写入队列 */
+	 xQueueSend(g_QueueMQTT,&SData,portMAX_DELAY);
 	vTaskDelay(100);
 	}
   }

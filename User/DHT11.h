@@ -7,9 +7,14 @@ struct DHT11Data {
    int8_t temp_deci;       // 温度小数部分
    int8_t check_sum;       // 校验和           
 };
+struct DHT11SendData{
+	int dht11_Hum;
+	int dht11_Tem;
+};
+
 void SelectGPIOMode_DHT11(uint16_t GPIO_Mode , uint16_t GPIO_Pull);
 int8_t DHT11_ReadByte(void);
-uint8_t DHT11_ReadData(int *Hum,int *Tem);
+uint8_t DHT11_ReadData(void);
 void DHT11_Task(void *Params);
 
 #endif
