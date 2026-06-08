@@ -22,7 +22,7 @@
 
 //#define OneNET_Internet_Address   "mqtts.heclouds.com"
 /* ? */
-#define Number_Message    "123"
+
 #define Tem  				25
 #define RECEIVE_ID          "222"
 
@@ -34,10 +34,11 @@ static uint8_t ESP8266_Cnt=0;
 static uint8_t ESP8266_PreCnt=0;
 /* 收到的数据存放到这个变量里面 */
 static uint8_t Data;
-
-//extern int	g_DHT11_Tem,g_DHT11_Hum;
+/* 表示即将上报的数据长度 */
+static uint16_t Number_Message=0;
 /* 队列句柄,用来读队列,当写队列时,同步数据到OneNET上 */
 extern QueueHandle_t g_QueueMQTT;
+
 
 extern struct DHT11SendData SData;
 /* 回调函数,接收到数据触发中断 */
@@ -160,10 +161,15 @@ void ESP8266_Task(void *Params){
 	/* ESP8266接收使能 */
 	HAL_UART_Receive_IT(&huart2,&Data,1);
 	ESP8266_init();
+	ESP8266_MQTT_Give_Data_Init();
 	while(1){
 		/* 等待烧录器到了我再看看传入数据的流程是怎样的,此处已经将温湿度的值传入到这个结构体Buffer中了 */
-		xQueueReceive(g_QueueMQTT,&SData,portMAX_DELAY );
-		ESP8266_MQTT_Give_Data();
+	  xQueueReceive(g_QueueMQTT,&SData,portMAX_DELAY);
+		/* 关闭调度器 */
+		//taskENTER_CRITICAL();
+	  ESP8266_Send_Data_To_OneNET();
+		/* 打开调度器 */
+		//taskEXIT_CRITICAL();
      }
 }
 
@@ -229,7 +235,7 @@ return ESP8266_Send_Command("+++","");
 
 /* OneNET服务器上的设备授权 */
 HAL_StatusTypeDef ESP8266_Link_Device_Status(char *device_name,char *device_iD,char *token){
-	char   cmd[128];
+	char   cmd[256]; //我去,本来写128以为够了调试半天,发现128确实小了
 	sprintf(cmd,"AT+MQTTUSERCFG=0,1,\"%s\",\"%s\",\"%s\",0,0,\"\"\r\n",device_name,device_iD,token);
     return ESP8266_Send_Command(cmd,"OK");
 }
@@ -244,21 +250,32 @@ HAL_StatusTypeDef ESP8266_TCP_MQTT_Link(char *internet_Address,char * mqtt_Port)
 /* 订阅属性上报回复主题,能收到平台确认消息 */
 HAL_StatusTypeDef ESP8266_Subscribe(char * device_id,char * device_name){
     char cmd[128];
-	sprintf(cmd,"AT+MQTTSUB=0,\"$sys/%s/%s/thing/property/post/reply\",0",device_id,device_name);
+	sprintf(cmd,"AT+MQTTSUB=0,\"$sys/%s/%s/thing/property/post/reply\",0\r\n",device_id,device_name);
 	return ESP8266_Send_Command(cmd,"OK");
+}
+
+
+/* 计算下一个命令长度为多少的函数 */
+HAL_StatusTypeDef ESP8266_Count_CmdLen(char * my_id,char *params_tem,int tem_data,char *params_humi,int hum_data){
+	char cmd[128];
+	sprintf(cmd,"{\"id\":\"%s\",\"params\":{\"%s\":{\"value\":%d},\"%s\":{\"value\":%d}}}\r\n",my_id,params_tem,tem_data,params_humi,hum_data);
+	 Number_Message=strlen(cmd);
+	return HAL_OK;
 }
 
 /* 设备上报属性数据,上传数据到OneNET云,第一步进入透传模式 */
-HAL_StatusTypeDef ESP8266_Send_Data_OneNET_CIP(char * device_id,char * device_name,char *number_message,uint8_t tem){
-   char cmd[128];
-	sprintf(cmd,"AT+MQTTPUBRAW=0,\"$sys/%s/%s/thing/property/post\",%s,0,0",device_id,device_name,Number_Message);
+HAL_StatusTypeDef ESP8266_Send_Data_OneNET_CIP(char * device_id,char * device_name,uint16_t number_message){
+    char cmd[128];
+	sprintf(cmd,"AT+MQTTPUBRAW=0,\"$sys/%s/%s/thing/property/post\",%d,0,0\r\n",device_id,device_name,Number_Message);
 	return ESP8266_Send_Command(cmd,"OK");
 }
 
+
+
 /* 上报指定数据,上报完退出透传模式 */
 HAL_StatusTypeDef ESP8266_Send_Data(char * my_id,char *params_tem,int tem_data,char *params_humi,int hum_data){
-    char cmd[128];
-	sprintf(cmd,"{\"id\":\"%s\",\"params\":{\"%s\":{\"value\":%d},\"%s\":{\"value\":%d}}}",my_id,params_tem,tem_data,params_humi,hum_data);
+	char cmd[128];
+	sprintf(cmd,"{\"id\":\"%s\",\"params\":{\"%s\":{\"value\":%d},\"%s\":{\"value\":%d}}}\r\n",my_id,params_tem,tem_data,params_humi,hum_data);
 	return ESP8266_Send_Command(cmd,"OK");
 }
 
@@ -266,14 +283,14 @@ HAL_StatusTypeDef ESP8266_Send_Data(char * my_id,char *params_tem,int tem_data,c
 /* 订阅平台下发控制指令主题,订阅这条指令后串口自动下发控制指令主题 */
 HAL_StatusTypeDef ESP8266_OneNet_Command(char * device_id,char * device_name){
 	char cmd[128];
-	sprintf(cmd,"AT+MQTTSUB=0,\"$sys/%s/%s/thing/property/set\",0",device_id,device_name);
+	sprintf(cmd,"AT+MQTTSUB=0,\"$sys/%s/%s/thing/property/set\",0\r\n",device_id,device_name);
 	return ESP8266_Send_Command(cmd,"OK");
 }
 
 /* 收到云端指令后,回复应答给平台 */
 HAL_StatusTypeDef ESP8266_MQTT_ACK(char * device_id,char * device_name,char * receive_id){
     char cmd[128];
-	sprintf("AT+MQTTPUB=0,\"$sys/%s/%s/thing/property/set_reply\"",device_id,device_name,receive_id);
+	sprintf("AT+MQTTPUB=0,\"$sys/%s/%s/thing/property/set_reply\"\r\n",device_id,device_name,receive_id);
 	return ESP8266_Send_Command(cmd,"OK");
 }
 
@@ -287,52 +304,53 @@ HAL_StatusTypeDef ESP8266_init(void)
 {
     char ip_buf[16];
     /* 让WIFI退出透传模式 */
-	while(ESP8266_Out_Transparent())
-        vTaskDelay(500); 
+//	while(ESP8266_Out_Transparent())
+//        vTaskDelay(500); 
 	
 	printf("1.RESTORE\r\n");
 	while(ESP8266_Restore())
-	    vTaskDelay(500);
+	    vTaskDelay(300);
 	
 	printf("2.AT\r\n");
 	while(ESP8266_AT_Test())
-        vTaskDelay(500);
+         vTaskDelay(300);
 	
 	printf("3.RST\r\n");
     while(ESP8266_SW_Reset())
-        vTaskDelay(500);
+         vTaskDelay(300);
 	
-	printf("4.CWMODE\r\n");
+	printf("4.CWMODE=1\r\n");
 	while(ESP8266_Set_Mode(ESP8266_STA_MODE))
-        vTaskDelay(500);
+         vTaskDelay(300);
 	
-	printf("5.AT+CIPMUX\r\n");  //设置单路连接模式，透传只能使用此模式
-	while(ESP8266_Single_Connection())
-        vTaskDelay(500);
+//	printf("5.AT+CIPMUX\r\n");  //设置单路连接模式，透传只能使用此模式
+//	while(ESP8266_Single_Connection())
+//        vTaskDelay(500);
 	
-	printf("6.CWJAP\r\n");      //连接WIFI
+	printf("5.CWJAP\r\n");      //连接WIFI
 	while(ESP8266_Join_AP(WIFI_SSID, WIFI_PWD))
-        vTaskDelay(500);
+         vTaskDelay(300);
     
-    printf("7.CIFSR\r\n");
-    while(ESP8266_Get_IP(ip_buf))
-       vTaskDelay(500);
+//    printf("7.CIFSR\r\n");
+//    while(ESP8266_Get_IP(ip_buf))
+//       vTaskDelay(500);
 
-    printf("ESP8266 IP: %s\r\n", ip_buf);
+   // printf("ESP8266 IP: %s\r\n", ip_buf);
 	
-	printf("8.CIPSTART\r\n");
-    while(ESP8266_Connect_TCP_Server(TCP_SERVER_IP, TCP_SERVER_PORT))
-       vTaskDelay(500);
+//	printf("8.CIPSTART\r\n");
+//    while(ESP8266_Connect_TCP_Server(TCP_SERVER_IP, TCP_SERVER_PORT))
+//       vTaskDelay(500);
     
-    printf("9.CIPMODE\r\n");
-    while(ESP8266_Out_Transparent())
-        vTaskDelay(500);
+//    printf("9.CIPMODE\r\n");
+//    while(ESP8266_Out_Transparent())
+   //     vTaskDelay(500);
     
     printf("ESP8266_Init OK\r\n");
     return HAL_OK;
 }
 
-HAL_StatusTypeDef ESP8266_MQTT_Give_Data(void){
+/* 此处是在用AT指令连接wifi以后用mqtt协议连接上OneNET的初始化步骤 */
+HAL_StatusTypeDef ESP8266_MQTT_Give_Data_Init(void){
 
 	printf("1.MQTTStatus\r\n");
 	while(ESP8266_Link_Device_Status(Device_Name,Device_ID,Token));
@@ -342,27 +360,47 @@ HAL_StatusTypeDef ESP8266_MQTT_Give_Data(void){
 	while(ESP8266_TCP_MQTT_Link(TCP_SERVER_IP, TCP_SERVER_PORT));
 	vTaskDelay(500);
 	
+//	printf("2.5 CountLen\r\n");
+//	while(ESP8266_Count_CmdLen(My_ID,Params_Tem,SData.dht11_Hum,Params_Humi,SData.dht11_Tem));
+//	vTaskDelay(500);
+	
 	printf("3.Sub_Up\r\n");
 	while(ESP8266_Subscribe(Device_ID,Device_Name));
 	vTaskDelay(500);
 	
-	printf("4.MQTT_Data_UP_CIP\r\n");
-	while(ESP8266_Send_Data_OneNET_CIP(Device_ID,Device_Name,Number_Message,Tem));
-	vTaskDelay(500);
+//	printf("4.MQTT_Data_UP_CIP\r\n");
+//	while(ESP8266_Send_Data_OneNET_CIP(Device_ID,Device_Name,Number_Message));
+//	vTaskDelay(500);
 	
-	printf("5.MQTT_Data_UP\r\n");
-	while(ESP8266_Send_Data(My_ID,Params_Tem,SData.dht11_Hum,Params_Humi,SData.dht11_Tem));
-	vTaskDelay(500);
+//	printf("5.MQTT_Data_UP\r\n");
+//	while(ESP8266_Send_Data(My_ID,Params_Tem,SData.dht11_Hum,Params_Humi,SData.dht11_Tem));
+//	vTaskDelay(500);
 	
-	printf("5.Sub_Dowm\r\n");
+	printf("4.Sub_Dowm\r\n");
 	while(ESP8266_OneNet_Command(Device_ID,Device_Name));
 	vTaskDelay(500);
 	
-	printf("6.ESP8266_ACK\r\n");
-	while(ESP8266_MQTT_ACK(Device_ID,Device_Name,RECEIVE_ID));
+//	printf("6.ESP8266_ACK\r\n");
+//	while(ESP8266_MQTT_ACK(Device_ID,Device_Name,RECEIVE_ID));
+//	vTaskDelay(500);
+	
+	printf(" MQTT_SendData_Init  OK\r\n");
+	return HAL_OK;
+}
+
+HAL_StatusTypeDef ESP8266_Send_Data_To_OneNET(void){
+	printf("1.CountLen\r\n");
+	while(ESP8266_Count_CmdLen(My_ID,Params_Tem,SData.dht11_Hum,Params_Humi,SData.dht11_Tem));
 	vTaskDelay(500);
 	
-	printf(" MQTT SendData  OK\r\n");
+	printf("2.MQTT_Data_UP_CIP\r\n");
+	while(ESP8266_Send_Data_OneNET_CIP(Device_ID,Device_Name,Number_Message));
+	vTaskDelay(500);
+	
+	printf("3.MQTT_Data_UP\r\n");
+	while(ESP8266_Send_Data(My_ID,Params_Tem,SData.dht11_Hum,Params_Humi,SData.dht11_Tem));
+	vTaskDelay(500);
+	
 	return HAL_OK;
 }
 

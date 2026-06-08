@@ -194,7 +194,7 @@ void MX_FREERTOS_Init(void) {
   WakeLEDHandle=xTaskCreateStatic(Light_LED_Task,"WakeLEDTask",88,NULL,osPriorityNormal,g_pucStackofWakeLEDTask,&g_TCBofWakeLEDTask);
   
   /* 创建温湿度传感任务 */
- DHT11Handle=xTaskCreateStatic(DHT11_Task,"DHT11Task",100,NULL,osPriorityNormal,g_pucStackofDHT11Task,&g_TCBofDHT11Task);
+  DHT11Handle=xTaskCreateStatic(DHT11_Task,"DHT11Task",100,NULL,osPriorityNormal,g_pucStackofDHT11Task,&g_TCBofDHT11Task);
   
 
   /* 创建姿态异常报警任务 */
@@ -204,7 +204,7 @@ void MX_FREERTOS_Init(void) {
   //ToggleLEDHandle=xTaskCreateStatic(ToggleLED,"ToggleLEDTask",128,NULL,osPriorityNormal,g_pucStackofToggleLEDTask,&g_TCBofToggleLEDTask);
   
   /* 创建ESP8266任务  */
-  ESP8266Handle=xTaskCreateStatic(ESP8266_Task,"ESP8266Task",128,NULL,osPriorityNormal,g_pucStackofESP8266Task,&g_TCBofESP8266Task);
+  ESP8266Handle=xTaskCreateStatic(ESP8266_Task,"ESP8266Task",128,NULL,osPriorityNormal+1,g_pucStackofESP8266Task,&g_TCBofESP8266Task);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
