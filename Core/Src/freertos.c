@@ -198,13 +198,13 @@ void MX_FREERTOS_Init(void) {
   
 
   /* 创建姿态异常报警任务 */
- AATHandle = xTaskCreateStatic(Attitude_Alarm_Task,"AATTask",256,NULL,osPriorityNormal,g_pucStackofAAT,&g_TCBofAATTask);
+  AATHandle = xTaskCreateStatic(Attitude_Alarm_Task,"AATTask",256,NULL,osPriorityNormal,g_pucStackofAAT,&g_TCBofAATTask);
 
   /* 创建两个任务共用蜂鸣器的情况,LED闪烁表示这个情况 */
   //ToggleLEDHandle=xTaskCreateStatic(ToggleLED,"ToggleLEDTask",128,NULL,osPriorityNormal,g_pucStackofToggleLEDTask,&g_TCBofToggleLEDTask);
   
   /* 创建ESP8266任务  */
-  ESP8266Handle=xTaskCreateStatic(ESP8266_Task,"ESP8266Task",128,NULL,osPriorityNormal+1,g_pucStackofESP8266Task,&g_TCBofESP8266Task);
+  ESP8266Handle=xTaskCreateStatic(ESP8266_Task,"ESP8266Task",128,NULL,osPriorityNormal+3,g_pucStackofESP8266Task,&g_TCBofESP8266Task);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */

@@ -50,8 +50,7 @@ int8_t DHT11_ReadByte(void){
 
 /* 完整流程 */
 uint8_t DHT11_ReadData(void){
-	/* 静态创建队列 */
-	g_QueueMQTT=xQueueCreateStatic(xQueueLenMQTT,sizeof(&SData),g_pucQueueStorageBufferMQTT,&g_pxQueueBufferMQTT);
+
 	 /* 初始化DHT11数据引脚 */
 	HAL_GPIO_WritePin(GPIOA,GPIO_PIN_4,GPIO_PIN_SET);
 	
@@ -130,7 +129,8 @@ if(RData.check_sum==sum){
 } 
 
 void DHT11_Task(void *Params){
-
+	/* 静态创建队列 */
+	g_QueueMQTT=xQueueCreateStatic(xQueueLenMQTT,sizeof(&SData),g_pucQueueStorageBufferMQTT,&g_pxQueueBufferMQTT);
 	OLED_ShowString(3,1,"Hum:  ");
 	OLED_ShowString(4,1,"Tem:  ");
 	while(1){
@@ -146,7 +146,7 @@ void DHT11_Task(void *Params){
 	/* 给出互斥量 */
 	MPU6050_GiveI2cMutex();
 	/* 将得到的数据写入队列 */
-	 xQueueSend(g_QueueMQTT,&SData,portMAX_DELAY);
+	xQueueSend(g_QueueMQTT,&SData,portMAX_DELAY);
 	vTaskDelay(100);
 	}
   }

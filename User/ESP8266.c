@@ -160,11 +160,14 @@ void ESP8266_Task(void *Params){
 	
 	/* ESP8266接收使能 */
 	HAL_UART_Receive_IT(&huart2,&Data,1);
+	
 	ESP8266_init();
 	ESP8266_MQTT_Give_Data_Init();
+	
 	while(1){
-		/* 等待烧录器到了我再看看传入数据的流程是怎样的,此处已经将温湿度的值传入到这个结构体Buffer中了 */
-	  xQueueReceive(g_QueueMQTT,&SData,portMAX_DELAY);
+		/* 此处已经将温湿度的值传入到这个结构体SDATA中了 */
+	    xQueueReceive(g_QueueMQTT,&SData,portMAX_DELAY);
+		printf("SendData\r\n");
 		/* 关闭调度器 */
 		//taskENTER_CRITICAL();
 	  ESP8266_Send_Data_To_OneNET();
@@ -312,7 +315,7 @@ HAL_StatusTypeDef ESP8266_init(void)
 	    vTaskDelay(300);
 	
 	printf("2.AT\r\n");
-	while(ESP8266_AT_Test())
+   while(ESP8266_AT_Test())
          vTaskDelay(300);
 	
 	printf("3.RST\r\n");
@@ -388,6 +391,7 @@ HAL_StatusTypeDef ESP8266_MQTT_Give_Data_Init(void){
 	return HAL_OK;
 }
 
+/* 发送数据的流程,每次上传数据之前要打开tcp透传和计算要发送的字节 */
 HAL_StatusTypeDef ESP8266_Send_Data_To_OneNET(void){
 	printf("1.CountLen\r\n");
 	while(ESP8266_Count_CmdLen(My_ID,Params_Tem,SData.dht11_Hum,Params_Humi,SData.dht11_Tem));
